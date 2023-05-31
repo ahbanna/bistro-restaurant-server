@@ -28,6 +28,7 @@ async function run() {
     // collection starts
     const menuCollection = client.db("bistro").collection("menu");
     const reviewCollection = client.db("bistro").collection("reviews");
+    const cartCollection = client.db("bistro").collection("carts");
     // collection end
 
     // menu READ starts
@@ -43,6 +44,27 @@ async function run() {
       res.send(result);
     });
     // review READ end
+
+    // carts CREATE api to receive data from client side starts
+    app.post("/carts", async (req, res) => {
+      const item = req.body;
+      console.log(item);
+      const result = await cartCollection.insertOne(item);
+      res.send(result);
+    });
+    // carts CREATE api to receive data from client side end
+
+    // carts READ starts
+    app.get("/carts", async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        res.send([]);
+      }
+      const query = { email: email };
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+    });
+    // carts READ end
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
