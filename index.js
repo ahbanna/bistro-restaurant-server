@@ -233,12 +233,52 @@ async function run() {
     const userCollection = client.db("bistro").collection("users");
     // collection end
 
+    // jwt starts
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+    // jwt end
+
+    // Warning: use verifyJWT before using verifyAdmin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
+
     // menu READ starts
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
     // menu READ end
+
+    // menu CREATE starts
+    app.post("/menu", async (req, res) => {
+      const newItem = req.body;
+      const result = await menuCollection.insertOne(newItem);
+      res.send(result);
+    });
+    // menu CREATE end
+
+    // menu DELETE starts
+    app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await menuCollection.deleteOne(query);
+      res.send(result);
+    });
+    // menu DELETE end
 
     // review READ starts
     app.get("/reviews", async (req, res) => {
@@ -302,19 +342,6 @@ async function run() {
     });
     // user CREATE api to receive data from client side end
 
-    // Warning: use verifyJWT before using verifyAdmin
-    const verifyAdmin = async (req, res, next) => {
-      const email = req.decoded.email;
-      const query = { email: email };
-      const user = await userCollection.findOne(query);
-      if (user?.role !== "admin") {
-        return res
-          .status(403)
-          .send({ error: true, message: "forbidden message" });
-      }
-      next();
-    };
-
     // user READ starts
     app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
@@ -351,16 +378,6 @@ async function run() {
       res.send(result);
     });
     // make UPDATE user as admin end
-
-    // jwt starts
-    app.post("/jwt", (req, res) => {
-      const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-      res.send({ token });
-    });
-    // jwt end
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
